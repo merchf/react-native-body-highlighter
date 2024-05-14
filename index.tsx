@@ -1,5 +1,5 @@
-import React, { memo, useCallback } from "react";
-import { Path } from "react-native-svg";
+import React, { memo, useCallback, useEffect, useRef } from "react";
+import { Circle, G, Path, Text } from "react-native-svg";
 import differenceWith from "ramda/src/differenceWith";
 
 import { bodyFront } from "./assets/bodyFront";
@@ -9,6 +9,7 @@ import { bodyFemaleFront } from "./assets/bodyFemaleFront";
 import { bodyFemaleBack } from "./assets/bodyFemaleBack";
 import { SvgFemaleWrapper } from "./components/SvgFemaleWrapper";
 import { SkinType, skinColorMapping } from './assets/skinTypes'
+import { Animated, Pressable } from 'react-native';
 
 export type Slug =
   | "abs"
@@ -42,6 +43,8 @@ export interface BodyPart {
   color: string;
   slug: Slug;
   pathArray?: string[];
+  badgeCount?: number;
+  textPosition: { x: number; y: number };
 }
 
 type Props = {
@@ -58,6 +61,8 @@ type Props = {
 
 const comparison = (a: BodyPart, b: BodyPart) => a.slug === b.slug;
 
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
 const Body = ({
   colors,
   data,
@@ -71,10 +76,16 @@ const Body = ({
     (dataSource: ReadonlyArray<BodyPart>) => {
       const innerData = data
         .map((d) => {
-          return dataSource.find((t) => t.slug === d.slug);
+          const matchedPart = dataSource.find(t => t.slug === d.slug);
+          return matchedPart ? {...matchedPart, badgeCount: d.badgeCount} : null;
         })
         .filter(Boolean);
-
+      console.log("innerData tal cual está", innerData);
+      // const innerData = data.map(d => {
+      //   const bodyPart = data.find(e => e.slug === d.slug);
+      //   return bodyPart ? { ...d, badgeCount: bodyPart.badgeCount } : d;
+      // }).filter(Boolean);
+      // console.log("innerData MODIFICADO", innerData);
       const coloredBodyParts = innerData.map((d) => {
         const bodyPart = data.find((e) => e.slug === d?.slug);
         let colorIntensity = 1;
@@ -96,6 +107,26 @@ const Body = ({
     return color;
   };
 
+  const radiusAnim = useRef(new Animated.Value(30)).current;
+
+  useEffect(() => {
+    const pulsate = () => {
+        Animated.sequence([
+            Animated.timing(radiusAnim, {
+                toValue: 36,
+                duration: 500,
+                useNativeDriver: true
+            }),
+            Animated.timing(radiusAnim, {
+                toValue: 30,
+                duration: 500,
+                useNativeDriver: true
+            }),
+        ]).start(() => pulsate());
+    };
+    pulsate();
+  }, [radiusAnim]);
+
   const skinColor = skinColorMapping[skinType];
   const renderBodySvg = (data: ReadonlyArray<BodyPart>) => {
     const SvgWrapper = gender === "male" ? SvgMaleWrapper : SvgFemaleWrapper;
@@ -105,13 +136,36 @@ const Body = ({
           if (bodyPart.pathArray) {
             return bodyPart.pathArray.map((path: string) => {
               return (
-                <Path
-                  key={path}
-                  onPress={() => onBodyPartPress?.(bodyPart)}
-                  id={bodyPart.slug}
-                  fill={getColorToFill(bodyPart)}
-                  d={path}
-                />
+                <G key={path}>
+                  <Path
+                    onPress={() => onBodyPartPress?.(bodyPart)}
+                    id={bodyPart.slug}
+                    fill={getColorToFill(bodyPart)}
+                    d={path}
+                  />
+                  {bodyPart.badgeCount && bodyPart.badgeCount > 0 && (
+                    <>
+                      <AnimatedCircle
+                        cx={bodyPart.textPosition.x}
+                        cy={bodyPart.textPosition.y}
+                        r={radiusAnim}
+                        fill={`rgba(0, 0, 255, 0.5)`}
+                        onPress={() => onBodyPartPress?.(bodyPart)}
+                      />
+                      <Text
+                        x={bodyPart.textPosition.x}
+                        y={bodyPart.textPosition.y + 4}
+                        fill="white"
+                        fontSize="25"
+                        fontWeight="bold"
+                        textAnchor="middle"
+                        alignmentBaseline="middle"
+                      >
+                        {bodyPart.badgeCount}
+                      </Text>
+                    </>
+                  )}
+                </G>
               );
             });
           }
