@@ -91,7 +91,7 @@ const Body = ({
   // '#0096C7' - Azul Medio
   // '#30BAD9' - Azul Claro
   // '#90E0EF' - Azul Muy Claro
-  const skinColor = skinColorMapping[skinType];
+  const skinColor = skinColorMapping[skinType][0];
   const maxBadgeCount = useMemo(() => Math.max(...data.map(part => part.badgeCount || 0)), [data]);
   
   const getCircleColorAndSize = useCallback((badgeCount: number) => {
@@ -177,7 +177,7 @@ const Body = ({
 
 Body.defaultProps = {
   scale: 1,
-  colors: ["#ff9800", "#ffecb3"],
+  colors: skinColorMapping[3].slice(1),
   zoomOnPress: false,
   side: "front",
   skinType: 3,
